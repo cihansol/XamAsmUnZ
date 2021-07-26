@@ -16,7 +16,6 @@ namespace XamAsmUnZ
 
         static void Main(string[] args)
         {
-
             Console.WriteLine("XamAsmUnZ");
             Console.WriteLine("Author: Cihan");
             Console.WriteLine(string.Empty);
