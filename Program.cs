@@ -188,7 +188,7 @@ namespace XamAsmUnZ
             Console.WriteLine("");
 
             //Create output directory
-            string outputBundleDirectory = Path.Combine(workingDirectory, elf32 != null ? "extracted_assemblies32" : "extracted_assemblies64");
+            string outputBundleDirectory = Path.Combine(Path.GetDirectoryName(inputFilePath), elf32 != null ? "extracted_assemblies32" : "extracted_assemblies64");
             Directory.CreateDirectory(outputBundleDirectory);
 
             //Deflate and write out binaries
