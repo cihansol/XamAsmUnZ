@@ -18,6 +18,7 @@ namespace XamAsmUnZ
         {
 
             Console.WriteLine("XamAsmUnZ");
+            Console.WriteLine("Author: Cihan");
             Console.WriteLine(string.Empty);
 
             if (args.Count() < 2)
