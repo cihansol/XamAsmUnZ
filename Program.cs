@@ -225,7 +225,7 @@ namespace XamAsmUnZ
                 return;
             }
 
-            string outputDirectory = Path.Combine(workingDirectory, "uncompressed_assemblies");
+            string outputDirectory = Path.Combine(inputFolderPath, "uncompressed_assemblies");
             Directory.CreateDirectory(outputDirectory);
 
             foreach (var file in assemblyFiles)
