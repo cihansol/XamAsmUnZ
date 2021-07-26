@@ -2,6 +2,8 @@
 
 Enables the extraction of .NET managed assemblies from Android Xamarin mobile applications.
 
+ ![Screenshot](_github/dotnet_assemblies.PNG?raw=true)
+
 ## Usage
 
     XamAsmUnZ -elf path/to/libmonodroid_bundle_app.so
