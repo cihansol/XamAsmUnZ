@@ -109,9 +109,8 @@ namespace XamAsmUnZ
                 Console.WriteLine("Input file is not an ELF.");
                 return;
             }
-
-            //var elfFile = ELFSharp.ELF.ELFReader.Load<ulong>(elfFilePath);
             Console.WriteLine("ELF file is of type: " + elfTypeCheck.ToString());
+
 
             var fs = new FileStream(elfFilePath, FileMode.Open, FileAccess.Read);
             var binr = new BinaryReader(fs);
