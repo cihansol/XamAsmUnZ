@@ -5,8 +5,8 @@ using System.Text;
 using System.Collections.Generic;
 
 using ELFSharp;
+using ELFSharp.ELF;
 using ELFSharp.ELF.Sections;
-
 
 
 namespace XamAsmUnZ
@@ -72,8 +72,19 @@ namespace XamAsmUnZ
             }
         }
 
+
         static void HandleELF(string workingDirectory, string inputFilePath)
         {
+            ELF<uint> elf32 = null;
+            ELF<ulong> elf64 = null;
+
+            Section<uint> rodata32Section = null;
+            Section<uint> data32Section = null;
+
+            Section<ulong> rodata64Section = null;
+            Section<ulong> data64Section = null;
+
+
             string elfFilePath = inputFilePath;
             if (!File.Exists(elfFilePath))
             {
@@ -88,7 +99,20 @@ namespace XamAsmUnZ
                 }
             }
 
-            var elfFile = ELFSharp.ELF.ELFReader.Load<ulong>(elfFilePath);
+            var elfTypeCheck = ELFReader.CheckELFType(elfFilePath);
+            if (elfTypeCheck == Class.Bit32)
+                elf32 = ELFReader.Load<uint>(elfFilePath);
+            else if (elfTypeCheck == Class.Bit64)
+                elf64 = ELFReader.Load<ulong>(elfFilePath);
+            else
+            {
+                Console.WriteLine("Input file is not an ELF.");
+                return;
+            }
+
+            //var elfFile = ELFSharp.ELF.ELFReader.Load<ulong>(elfFilePath);
+            Console.WriteLine("ELF file is of type: " + elfTypeCheck.ToString());
+
             var fs = new FileStream(elfFilePath, FileMode.Open, FileAccess.Read);
             var binr = new BinaryReader(fs);
 
@@ -96,77 +120,68 @@ namespace XamAsmUnZ
             Console.WriteLine("Finding assembly bundles.");
             Console.WriteLine("");
 
-            Section<ulong> rodataSection = null;
-            Section<ulong> dataSection = null;
-            foreach (var section in elfFile.Sections)
-            {
-                if (section.Name == ".rodata")
-                    rodataSection = section;
-                else if (section.Name == ".data")
-                    dataSection = section;
-            }
+            if (elf32 != null)
+                foreach (var section in elf32.Sections)
+                {
+                    if (section.Name == ".rodata")
+                        rodata32Section = section;
+                    else if (section.Name == ".data")
+                        data32Section = section;
+                }
+            else
+                foreach (var section in elf64.Sections)
+                {
+                    if (section.Name == ".rodata")
+                        rodata64Section = section;
+                    else if (section.Name == ".data")
+                        data64Section = section;
+                }
 
-            if (rodataSection == null || dataSection == null)
+
+            if ((rodata32Section == null || data32Section == null) && (rodata64Section == null || data64Section == null))
             {
                 Console.WriteLine(".rodata/.data not found");
                 return;
             }
 
+
             //Get all GZ matches (lazy)
-            List<GZipSegment> potentialGzEntries = GZipSegment.FindGZSegments(binr, elfFile, rodataSection);
+            List<GZipSegment> potentialGzEntries;
+            if (elf32 != null)
+                potentialGzEntries = GZipSegment.FindGZSegments32(binr, elf32, rodata32Section);
+            else
+                potentialGzEntries = GZipSegment.FindGZSegments(binr, elf64, rodata64Section);
+
             if (potentialGzEntries.Count == 0)
             {
                 Console.WriteLine("Unable to find any GZip segments. File is potentially packed.");
                 return;
             }
 
-            List<AssemblyBundle> assemblyBundles = new List<AssemblyBundle>();
+            List<AssemblyBundle> assemblyBundles;
 
             //Grab the asset pointers
+            List<uint> dataAsmPointers32 = new List<uint>();
             List<ulong> dataAsmPointers = new List<ulong>();
-            binr.BaseStream.Seek((long)dataSection.Offset, SeekOrigin.Begin);
-            while (true)
-            {
-                ulong currentPtr = binr.ReadUInt64();
-                if (currentPtr == 0)
-                    break;
-                dataAsmPointers.Add(currentPtr);
-            }
 
-            if (dataAsmPointers.Count == 0)
+            if (elf32 != null)
+                dataAsmPointers32 = AssemblyBundle.GetBundleDataPointers32(binr, data32Section);
+            else
+                dataAsmPointers = AssemblyBundle.GetBundleDataPointers(binr, data64Section);
+
+
+            if (dataAsmPointers32.Count == 0 && dataAsmPointers.Count == 0)
             {
                 Console.WriteLine("Unable to find any data pointers. Data section could be empty inside ELF");
                 return;
             }
 
-            //Loop each reference pointer
-            for (int p = 0; p < dataAsmPointers.Count; p++)
-            {
-                ulong dptr = dataAsmPointers[p];
-                AssemblyBundle bundle = new AssemblyBundle();
+            //Read Bundles
+            if (elf32 != null)
+                assemblyBundles = AssemblyBundle.ReadAllBundles32(binr, elf32, dataAsmPointers32, potentialGzEntries);
+            else
+                assemblyBundles = AssemblyBundle.ReadAllBundles(binr, elf64, dataAsmPointers, potentialGzEntries);
 
-                ulong fo = Utilities.SeekToAddress(binr, elfFile, dptr);
-                bundle.bundleEntry = Utilities.FromBinaryReader<assembly_bundle_entry>(binr);
-
-                //read the name
-                Utilities.SeekToAddress(binr, elfFile, bundle.bundleEntry.bundleNamePtr);
-                bundle.ModuleName = Utilities.ReadASCIIZstring(binr);
-
-
-                //find matching GZ stream
-                var generatedBundle = AssemblyBundle.FindMatchingGZData(binr, bundle, potentialGzEntries);
-                if (generatedBundle.gzData != null)
-                {
-                    assemblyBundles.Add(generatedBundle);
-                    Console.WriteLine($"Bundle: [{generatedBundle.ModuleName}] \nGZData Offset: [{generatedBundle}] \n" +
-                        $"GZData Size Compressed: [{generatedBundle.bundleEntry.bundleGzDataCompressed}] \n" +
-                        $"GZData Size Uncompressed: [{generatedBundle.bundleEntry.bundleGzDataUncompressed}] \n");
-
-                }
-                else
-                    Console.WriteLine($"Found invalid GZStream in library @ {generatedBundle} for .data pointer {dptr} module name: {bundle.ModuleName}");
-
-            }
 
             //Uncompress and write to disk
             Console.WriteLine("");
@@ -174,7 +189,7 @@ namespace XamAsmUnZ
             Console.WriteLine("");
 
             //Create output directory
-            string outputBundleDirectory = Path.Combine(workingDirectory, "extracted_assemblies");
+            string outputBundleDirectory = Path.Combine(workingDirectory, elf32 != null ? "extracted_assemblies32" : "extracted_assemblies64");
             Directory.CreateDirectory(outputBundleDirectory);
 
             //Deflate and write out binaries
@@ -184,10 +199,17 @@ namespace XamAsmUnZ
 
             assemblyBundles.Clear();
             binr.Close();
-            elfFile.Dispose();
+
+            if (elf32 != null)
+                elf32.Dispose();
+            else
+                elf64.Dispose();
 
             return;
         }
+
+        
+
 
         static void HandleDIR(string workingDirectory, string inputFolderPath)
         {
@@ -253,8 +275,6 @@ namespace XamAsmUnZ
             return;
         }
 
-
-  
 
 
     }
