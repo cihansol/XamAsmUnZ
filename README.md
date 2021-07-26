@@ -8,7 +8,8 @@ Enables the extraction of .NET managed assemblies from Android Xamarin mobile ap
 
     XamAsmUnZ -elf path/to/libmonodroid_bundle_app.so
     XamAsmUnZ -dir path/to/folder
-
+    
+* Supports both ELF32/ELF64
 
 ## Dependencies
 
