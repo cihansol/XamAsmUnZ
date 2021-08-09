@@ -54,7 +54,7 @@ namespace XamAsmUnZ
 
         }
 
-        static void DeflateAssemblies(List<AssemblyBundle> assemblyBundles, string outFolderPath)
+        static void inflateAssemblies(List<AssemblyBundle> assemblyBundles, string outFolderPath)
         {
             foreach (var assemblyBundle in assemblyBundles)
             {
@@ -191,8 +191,8 @@ namespace XamAsmUnZ
             string outputBundleDirectory = Path.Combine(Path.GetDirectoryName(inputFilePath), elf32 != null ? "extracted_assemblies32" : "extracted_assemblies64");
             Directory.CreateDirectory(outputBundleDirectory);
 
-            //Deflate and write out binaries
-            DeflateAssemblies(assemblyBundles, outputBundleDirectory);
+            //inflate and write out binaries
+            inflateAssemblies(assemblyBundles, outputBundleDirectory);
 
             Console.WriteLine("Extraction Complete.");
 
