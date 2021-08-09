@@ -58,7 +58,7 @@ namespace XamAsmUnZ
         {
             foreach (var assemblyBundle in assemblyBundles)
             {
-                Console.WriteLine($"Deflating {assemblyBundle.ModuleName}");
+                Console.WriteLine($"Inflating {assemblyBundle.ModuleName}");
                 byte[] rawAssembly = Utilities.Decompress(assemblyBundle.gzData);
                 if (rawAssembly == null || rawAssembly.Length == 0)
                 {
@@ -184,7 +184,7 @@ namespace XamAsmUnZ
 
             //Uncompress and write to disk
             Console.WriteLine("");
-            Console.WriteLine("Deflating bundles and writting to disk.");
+            Console.WriteLine("Inflating bundles and writting to disk.");
             Console.WriteLine("");
 
             //Create output directory
